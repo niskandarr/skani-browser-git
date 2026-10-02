@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Skani Genome Comparator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #e8eae5;
+      font-family: 'Roboto', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 24px 64px;
+      color: #1a2e1a;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 5px;
+      padding: 48px 56px;
+      width: 100%;
+      max-width: 960px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .page-header {
+      margin-bottom: 28px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid #d4e0d0;
+    }
+
+    .page-header h1 {
+      font-size: 32px;
+      font-weight: 700;
+      color: #1a2e1a;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .page-header p {
+      font-size: 15px;
+      color: #5a7260;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid #d4e0d0;
+      margin-bottom: 28px;
+    }
+
+    .tab-btn {
+      padding: 10px 24px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #5a7260;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      margin-bottom: -1px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+
+    .tab-btn.active {
+      color: #1a2e1a;
+      border-bottom-color: #4a8c3f;
+    }
+
+    .tab-btn:hover:not(.active) {
+      color: #1a2e1a;
+    }
+
+    .tab-pane {
+      display: none;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    /* Drop zones */
+    .genome-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .genome-slot>.slot-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a2e1a;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .drop-zone {
+      border: 2px dashed #a3b89e;
+      border-radius: 12px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: #f7faf5;
+      transition: border-color 0.15s, background 0.15s;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      min-height: 120px;
+      justify-content: center;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: #4a8c3f;
+      background: #edf5ea;
+    }
+
+    .drop-zone.loaded {
+      border-style: solid;
+      border-color: #4a8c3f;
+      background: #edf5ea;
+    }
+
+    .upload-icon {
+      width: 28px;
+      height: 28px;
+      color: #9ca3af;
+    }
+
+    .drop-zone:hover .upload-icon,
+    .drop-zone.drag-over .upload-icon,
+    .drop-zone.loaded .upload-icon {
+      color: #4a8c3f;
+    }
+
+    .drop-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .drop-zone:hover .drop-title,
+    .drop-zone.drag-over .drop-title,
+    .drop-zone.loaded .drop-title {
+      color: #4a8c3f;
+    }
+
+    .drop-sub {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .drop-zone.loaded .drop-sub {
+      color: #4a8c3f;
+    }
+
+    /* File list (triangle) */
+    .file-list-wrap {
+      border: 1.5px solid #c8d9c3;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 28px;
+    }
+
+    .file-list-header {
+      padding: 10px 16px;
+      background: #f7faf5;
+      border-bottom: 1px solid #d4e0d0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a2e1a;
+    }
+
+    .file-list-header .count {
+      font-weight: 400;
+      color: #5a7260;
+    }
+
+    .drop-zone-inline {
+      border: none;
+      border-bottom: 1px dashed #a3b89e;
+      border-radius: 0;
+      padding: 20px;
+      min-height: 80px;
+      background: #f7faf5;
+    }
+
+    .file-list {
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .file-item {
+      display: flex;
+      align-items: center;
+      padding: 9px 16px;
+      gap: 10px;
+      border-bottom: 1px solid #eef2ec;
+    }
+
+    .file-item:last-child {
+      border-bottom: none;
+    }
+
+    .file-item .fi-icon {
+      color: #9ca3af;
+      flex-shrink: 0;
+    }
+
+    .file-item .fi-name {
+      font-size: 13px;
+      color: #1a2e1a;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .file-item .fi-size {
+      font-size: 12px;
+      color: #9ca3af;
+      white-space: nowrap;
+    }
+
+    .file-item .fi-remove {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px 4px;
+      color: #9ca3af;
+      font-size: 16px;
+      line-height: 1;
+      border-radius: 4px;
+    }
+
+    .file-item .fi-remove:hover {
+      color: #ef4444;
+      background: #fef2f2;
+    }
+
+    /* Parameters */
+    .section-heading {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a2e1a;
+      margin-bottom: 4px;
+    }
+
+    .section-divider {
+      border: none;
+      border-top: 1px solid #d4e0d0;
+      margin: 12px 0 20px;
+    }
+
+    .params-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .param-item label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+
+    .param-item input {
+      width: 100%;
+      background: #fff;
+      border: 1.5px solid #c8d9c3;
+      border-radius: 10px;
+      color: #1a2e1a;
+      font-family: 'Roboto', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      -moz-appearance: textfield;
+    }
+
+    .param-item input::-webkit-outer-spin-button,
+    .param-item input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+    }
+
+    .param-item input:focus {
+      border-color: #4a8c3f;
+      box-shadow: 0 0 0 3px rgba(74, 140, 63, 0.12);
+    }
+
+    .param-hint {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 5px;
+    }
+
+    /* Button */
+    .compare-btn {
+      width: 100%;
+      background: #c8d9c3;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Roboto', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 15px;
+      cursor: not-allowed;
+      transition: background 0.2s, transform 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .compare-btn.ready {
+      background: #4a8c3f;
+      cursor: pointer;
+    }
+
+    .compare-btn.ready:hover {
+      background: #35682d;
+    }
+
+    .compare-btn.ready:active {
+      transform: scale(0.99);
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2.5px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .status {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #9ca3af;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    .status.error {
+      color: #ef4444;
+    }
+
+    /* Dist results */
+    .results {
+      margin-top: 28px;
+      display: none;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+    }
+
+    .metric-card {
+      background: #f7faf5;
+      border: 1.5px solid #c8d9c3;
+      border-radius: 14px;
+      padding: 20px 16px;
+      text-align: center;
+    }
+
+    .metric-card.primary {
+      background: #edf5ea;
+      border-color: #8dba84;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9ca3af;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .metric-card.primary .metric-label {
+      color: #4a8c3f;
+    }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a2e1a;
+      letter-spacing: -0.02em;
+    }
+
+    .metric-card.primary .metric-value {
+      color: #35682d;
+    }
+
+    /* Triangle matrix */
+    .matrix-wrap {
+      margin-top: 20px;
+      overflow-x: auto;
+    }
+
+    .matrix-table {
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .matrix-table th,
+    .matrix-table td {
+      padding: 7px 10px;
+      border: 1px solid #e5ede3;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .matrix-table th {
+      background: #f7faf5;
+      font-weight: 600;
+      color: #374151;
+      font-size: 11px;
+    }
+
+    .matrix-table td.self {
+      background: #f7faf5;
+      color: #9ca3af;
+    }
+
+    .matrix-table td.empty {
+      background: #fafafa;
+      color: #d1d5db;
+    }
+
+    .matrix-table td.value {
+      font-weight: 600;
+    }
+
+    /* Export */
+    .export-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .export-btn {
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 500;
+      border: 1.5px solid #c8d9c3;
+      border-radius: 8px;
+      background: #fff;
+      color: #374151;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+
+    .export-btn:hover {
+      background: #f7faf5;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <div class="page-header">
+      <h1>Skani Genome Comparator</h1>
+<p>Compare genomes using <a href="https://github.com/bluenote-1577/skani" target="_blank" rel="noopener noreferrer">skani</a></p>    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('dist', this)">Dist</button>
+      <button class="tab-btn" onclick="switchTab('triangle', this)">Triangle</button>
+    </div>
+
+    <!-- ================================================================ DIST TAB -->
+    <div id="pane-dist" class="tab-pane active">
+      <div class="genome-row">
+        <div class="genome-slot">
+          <span class="slot-label">Genome A</span>
+          <div class="drop-zone" id="dropA">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span class="drop-title">Click to upload</span>
+            <span class="drop-sub">FASTA, FA, FNA</span>
+          </div>
+          <input type="file" id="fileA" accept=".fasta,.fa,.fna" hidden>
+        </div>
+        <div class="genome-slot">
+          <span class="slot-label">Genome B</span>
+          <div class="drop-zone" id="dropB">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span class="drop-title">Click to upload</span>
+            <span class="drop-sub">FASTA, FA, FNA</span>
+          </div>
+          <input type="file" id="fileB" accept=".fasta,.fa,.fna" hidden>
+        </div>
+      </div>
+
+      <div class="section-heading">Algorithm Parameters</div>
+      <hr class="section-divider">
+      <div class="params-row">
+        <div class="param-item">
+          <label for="d_k">k-mer size (k)</label>
+          <input type="number" id="d_k" value="15" min="1" max="32">
+          <div class="param-hint">Default: 15</div>
+        </div>
+        <div class="param-item">
+          <label for="d_c">Compression (c)</label>
+          <input type="number" id="d_c" value="125" min="1">
+          <div class="param-hint">Default: 125</div>
+        </div>
+        <div class="param-item">
+          <label for="d_mc">Marker compression</label>
+          <input type="number" id="d_mc" value="1000" min="1">
+          <div class="param-hint">Default: 1000 (must be >= c)</div>
+        </div>
+      </div>
+
+      <button class="compare-btn" id="dist-btn" disabled>
+        <div class="spinner" id="dist-spinner"></div>
+        <span id="dist-btn-text">Compare Genomes</span>
+      </button>
+      <div class="status" id="dist-status"></div>
+
+      <div class="results" id="dist-results">
+        <hr class="section-divider" style="margin-top:28px;">
+        <div class="results-grid">
+          <div class="metric-card primary">
+            <div class="metric-label">ANI</div>
+            <div class="metric-value" id="res-ani">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">AF (genome A)</div>
+            <div class="metric-value" id="res-afref">—</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">AF (genome B)</div>
+            <div class="metric-value" id="res-afquery">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ TRIANGLE TAB -->
+    <div id="pane-triangle" class="tab-pane">
+      <div class="file-list-wrap">
+        <div class="file-list-header">
+          <span>Genomes</span>
+          <span class="count" id="tri-count">0 files</span>
+        </div>
+        <div class="drop-zone drop-zone-inline" id="dropTri">
+          <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <span class="drop-title">Click or drop FASTA files</span>
+          <span class="drop-sub">Multiple files allowed — .fasta .fa .fna</span>
+        </div>
+        <input type="file" id="fileTri" accept=".fasta,.fa,.fna" multiple hidden>
+        <div class="file-list" id="tri-file-list"></div>
+      </div>
+
+      <div class="section-heading">Algorithm Parameters</div>
+      <hr class="section-divider">
+      <div class="params-row">
+        <div class="param-item">
+          <label for="t_k">k-mer size (k)</label>
+          <input type="number" id="t_k" value="15" min="1" max="32">
+          <div class="param-hint">Default: 15</div>
+        </div>
+        <div class="param-item">
+          <label for="t_c">Compression (c)</label>
+          <input type="number" id="t_c" value="125" min="1">
+          <div class="param-hint">Default: 125</div>
+        </div>
+        <div class="param-item">
+          <label for="t_mc">Marker compression</label>
+          <input type="number" id="t_mc" value="1000" min="1">
+          <div class="param-hint">Default: 1000 (must be >= c)</div>
+        </div>
+      </div>
+
+      <button class="compare-btn" id="tri-btn" disabled>
+        <div class="spinner" id="tri-spinner"></div>
+        <span id="tri-btn-text">Run Triangle</span>
+      </button>
+      <div class="status" id="tri-status"></div>
+
+      <div class="results" id="tri-results">
+        <hr class="section-divider" style="margin-top:28px;">
+        <div style="font-size:16px;font-weight:700;color:#1a2e1a;margin-bottom:12px;">Distance matrix</div>
+        <div class="export-row">
+  <button class="export-btn" id="export-tsv">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    Export TSV
+  </button>
+  
+</div>
+        <div class="matrix-wrap" id="matrix-wrap"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    function switchTab(id, el) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('pane-' + id).classList.add('active');
+    }
+    function removeTriFile(i) {
+      // will be set by module
+    }
+  </script>
+
+  <script type="module">
+
+    import init, { compare_genomes, compare_triangle } from './pkg/skani_browser.js';
+  //  import init, { compare_genomes, compare_triangle } from './pkg/skani_browser.js';
+
+    // ---- state ----
+    let fileA = null, fileB = null;
+    let triFiles = [];
+    let lastTriResult = null;
+
+    // ---- status helpers ----
+    function setStatus(el, msg, isError = false) {
+      el.textContent = msg;
+      el.className = 'status' + (isError ? ' error' : '');
+    }
+
+    function setLoading(btn, spinner, textEl, label, loading) {
+      btn.disabled = loading;
+      spinner.style.display = loading ? 'block' : 'none';
+      textEl.textContent = loading ? 'Running…' : label;
+      if (loading) btn.classList.remove('ready');
+    }
+
+    // ---- upload icon svg ----
+    const uploadSVG = `<svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>`;
+    const checkSVG = `<svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    // ---- dist file setup ----
+    function setupSingle(zoneId, inputId, setFile, btnEl) {
+      const zone = document.getElementById(zoneId);
+      const input = document.getElementById(inputId);
+      zone.addEventListener('click', () => input.click());
+      input.addEventListener('change', () => {
+        const f = input.files[0];
+        if (f) { setFile(f); markSingleLoaded(zone, f.name); checkDistReady(); }
+      });
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault(); zone.classList.remove('drag-over');
+        const f = e.dataTransfer.files[0];
+        if (f) { setFile(f); markSingleLoaded(zone, f.name); checkDistReady(); }
+      });
+    }
+
+    function markSingleLoaded(zone, name) {
+      zone.classList.add('loaded');
+      zone.innerHTML = checkSVG + `<span class="drop-title">${name}</span><span class="drop-sub">Loaded</span>`;
+    }
+
+    function checkDistReady() {
+      const btn = document.getElementById('dist-btn');
+      if (fileA && fileB) { btn.disabled = false; btn.classList.add('ready'); }
+    }
+
+    setupSingle('dropA', 'fileA', f => fileA = f);
+    setupSingle('dropB', 'fileB', f => fileB = f);
+
+    // ---- triangle file setup ----
+    function formatSize(b) {
+      if (b < 1024) return b + ' B';
+      if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+      return (b / 1048576).toFixed(1) + ' MB';
+    }
+
+    function renderTriFileList() {
+      const list = document.getElementById('tri-file-list');
+      const count = document.getElementById('tri-count');
+      count.textContent = triFiles.length + ' file' + (triFiles.length !== 1 ? 's' : '');
+      list.innerHTML = triFiles.map((f, i) => `
+        <div class="file-item">
+          <svg class="fi-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <span class="fi-name">${f.name}</span>
+          <span class="fi-size">${formatSize(f.size)}</span>
+          <button class="fi-remove" onclick="removeTriFile(${i})" aria-label="remove">×</button>
+        </div>`).join('');
+      const btn = document.getElementById('tri-btn');
+      if (triFiles.length >= 2) { btn.disabled = false; btn.classList.add('ready'); }
+      else { btn.disabled = true; btn.classList.remove('ready'); }
+    }
+
+    window.removeTriFile = (i) => {
+      triFiles.splice(i, 1);
+      renderTriFileList();
+    };
+
+    const dropTri = document.getElementById('dropTri');
+    const fileTri = document.getElementById('fileTri');
+
+    dropTri.addEventListener('click', () => fileTri.click());
+    fileTri.addEventListener('change', () => {
+      triFiles = triFiles.concat(Array.from(fileTri.files));
+      renderTriFileList();
+    });
+    dropTri.addEventListener('dragover', e => { e.preventDefault(); dropTri.classList.add('drag-over'); });
+    dropTri.addEventListener('dragleave', () => dropTri.classList.remove('drag-over'));
+    dropTri.addEventListener('drop', e => {
+      e.preventDefault(); dropTri.classList.remove('drag-over');
+      triFiles = triFiles.concat(Array.from(e.dataTransfer.files));
+      renderTriFileList();
+    });
+
+    // ---- ANI colour ----
+    function aniColor(v) {
+      if (v >= 99) return { bg: '#edf5ea', text: '#35682d' };
+      if (v >= 97) return { bg: '#f0f7ee', text: '#4a8c3f' };
+      if (v >= 95) return { bg: '#fef9ec', text: '#92610b' };
+      if (v >= 90) return { bg: '#fff3e0', text: '#b45309' };
+      return { bg: '#fef2f2', text: '#dc2626' };
+    }
+
+    // ---- build matrix HTML ----
+    function buildMatrix(names, results) {
+      const n = names.length;
+      // build lookup: [i][j] = ani value
+      const lookup = {};
+      results.forEach(r => {
+        if (!lookup[r.i]) lookup[r.i] = {};
+        lookup[r.i][r.j] = r.ani;
+      });
+
+      let html = '<table class="matrix-table"><thead><tr><th></th>';
+      names.forEach(name => { html += `<th>${name}</th>`; });
+      html += '</tr></thead><tbody>';
+
+      for (let i = 0; i < n; i++) {
+        html += `<tr><th style="text-align:right;">${names[i]}</th>`;
+        for (let j = 0; j < n; j++) {
+          if (i === j) {
+            html += `<td class="self">100%</td>`;
+          } else {
+            const val = (lookup[Math.min(i, j)] || {})[Math.max(i, j)];
+            if (val !== undefined) {
+              const pct = (val * 100).toFixed(2) + '%';
+              const col = aniColor(val * 100);
+              html += `<td class="value" style="background:${col.bg};color:${col.text};">${pct}</td>`;
+            } else {
+              html += `<td class="empty">—</td>`;
+            }
+          }
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      return html;
+    }
+    
+    // ---- init WASM ----
+     init({ module_or_path: './pkg/skani_browser_bg.wasm' }).then(async () => {
+       console.log('crossOriginIsolated:', crossOriginIsolated);
+  console.log('SharedArrayBuffer available:', typeof SharedArrayBuffer !== 'undefined');
+  console.log("thread pool ready"); // only then do anything else      // initialise rayon thread pool using all available CPU threads
+
+      setStatus(document.getElementById('dist-status'), 'Ready');
+      setStatus(document.getElementById('tri-status'), 'Ready');
+      // ---- dist compare ----
+      document.getElementById('dist-btn').addEventListener('click', async () => {
+        if (!fileA || !fileB) { setStatus(document.getElementById('dist-status'), 'Please select both genome files.', true); return; }
+        const k = parseInt(document.getElementById('d_k').value);
+        const c = parseInt(document.getElementById('d_c').value);
+        const mc = parseInt(document.getElementById('d_mc').value);
+        if (mc < c) { setStatus(document.getElementById('dist-status'), 'Marker compression must be >= c.', true); return; }
+
+        const fastaA = await fileA.text();
+        const fastaB = await fileB.text();
+        const btn = document.getElementById('dist-btn');
+        const spinner = document.getElementById('dist-spinner');
+        const btnText = document.getElementById('dist-btn-text');
+        const statusEl = document.getElementById('dist-status');
+
+        setLoading(btn, spinner, btnText, 'Compare Genomes', true);
+        setStatus(statusEl, '');
+        document.getElementById('dist-results').style.display = 'none';
+
+        setTimeout(() => {
+        const raw = compare_genomes(fastaA, fastaB, k, c, mc);
+          console.log('RAW OUTPUT:', raw);   // <-- add this
+
+
+  if (raw.includes('NaN') || raw.includes('Infinity')) {
+    setStatus(statusEl, 'These genomes are too dissimilar to compute a reliable ANI — no valid alignment found.', true);
+    btn.disabled = false; btn.classList.add('ready');
+    spinner.style.display = 'none'; btnText.textContent = 'Compare Genomes';
+    return;
+  }
+
+  try {
+    const res = JSON.parse(raw);
+      if (res.error) {
+    setStatus(statusEl, res.error, true);
+    return;
+  }
+  
+    document.getElementById('res-ani').textContent = (res.ani * 100).toFixed(2) + '%';
+    document.getElementById('res-afref').textContent = (res.af_ref * 100).toFixed(2) + '%';
+    document.getElementById('res-afquery').textContent = (res.af_query * 100).toFixed(2) + '%';
+    document.getElementById('dist-results').style.display = 'block';
+    setStatus(statusEl, 'Comparison complete.');
+  } catch (e) {
+    setStatus(statusEl, 'Error: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.classList.add('ready');
+    spinner.style.display = 'none'; btnText.textContent = 'Compare Genomes';
+  }
+}, 0);
+      });
+
+      // ---- triangle compare ----
+      document.getElementById('tri-btn').addEventListener('click', async () => {
+        if (triFiles.length < 2) { setStatus(document.getElementById('tri-status'), 'Please upload at least 2 genome files.', true); return; }
+        const k = parseInt(document.getElementById('t_k').value);
+        const c = parseInt(document.getElementById('t_c').value);
+        const mc = parseInt(document.getElementById('t_mc').value);
+        if (mc < c) { setStatus(document.getElementById('tri-status'), 'Marker compression must be >= c.', true); return; }
+
+        const btn = document.getElementById('tri-btn');
+        const spinner = document.getElementById('tri-spinner');
+        const btnText = document.getElementById('tri-btn-text');
+        const statusEl = document.getElementById('tri-status');
+
+        setLoading(btn, spinner, btnText, 'Run Triangle', true);
+        setStatus(statusEl, 'Reading files…');
+        document.getElementById('tri-results').style.display = 'none';
+
+        // read all files
+        const fastas = await Promise.all(triFiles.map(f => f.text()));
+        const names = triFiles.map(f => f.name);
+
+        setStatus(statusEl, 'Sketching and comparing in parallel…');
+       
+        setTimeout(() => {
+          try {
+            console.log("about to call triangle");
+            console.log(fastas);
+            console.log(names);
+            console.log(k, c, mc);
+
+            const t0 = performance.now();
+            const raw = compare_triangle(fastas, names, k, c, mc);
+            const t1 = performance.now();
+            
+    
+            console.log(`compare_triangle runtime: ${(t1 - t0).toFixed(1)} ms for ${fastas.length} genomes`);
+
+            console.log("returned:", raw);
+            const data = JSON.parse(raw);
+
+            if (data.error) { setStatus(statusEl, data.error, true); return; }
+
+            lastTriResult = data;
+            document.getElementById('matrix-wrap').innerHTML = buildMatrix(data.names, data.results);
+            document.getElementById('tri-results').style.display = 'block';
+            setStatus(statusEl, `Done — ${data.results.length} pairs compared across ${data.n} genomes.`);
+          } catch (e) {
+            setStatus(statusEl, 'Error: ' + e.message, true);
+          } finally {
+            btn.disabled = false; btn.classList.add('ready');
+            spinner.style.display = 'none'; btnText.textContent = 'Run Triangle';
+          }
+        }, 0);
+      });
+
+      function exportTSV(names, results) {
+      const n = names.length;
+      const lookup = {};
+      results.forEach(r => { if (!lookup[r.i]) lookup[r.i] = {}; lookup[r.i][r.j] = r; });
+      let tsv = 'Genome_A\tGenome_B\tANI\tAF_query\tAF_ref\n';
+      for (let i = 0; i < n; i++) {
+        for (let j = i+1; j < n; j++) {
+          const r = (lookup[i] || {})[j];
+          if (r) tsv += `${names[i]}\t${names[j]}\t${(r.ani*100).toFixed(4)}\t${(r.af_query*100).toFixed(4)}\t${(r.af_ref*100).toFixed(4)}\n`;
+        }
+      }
+      download('skani_results.tsv', tsv);
+    }
+
+    function exportPhylip(names, results) {
+      const n = names.length;
+      const lookup = {};
+      results.forEach(r => { if (!lookup[r.i]) lookup[r.i] = {}; lookup[r.i][r.j] = r.ani; });
+      let out = `${n}\n`;
+      for (let i = 0; i < n; i++) {
+        const label = names[i].substring(0, 10).padEnd(10);
+        let row = label;
+        for (let j = 0; j < n; j++) {
+          if (i === j) { row += '\t0.000000'; }
+          else {
+            const ani = (lookup[Math.min(i,j)] || {})[Math.max(i,j)] || 0;
+            row += '\t' + (1 - ani).toFixed(6);
+          }
+        }
+        out += row + '\n';
+      }
+      download('skani_results.phy', out);
+    }
+
+    function download(filename, text) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+      a.download = filename;
+      a.click();
+    }
+
+    document.getElementById('export-tsv').addEventListener('click', () => {
+      if (lastTriResult) exportTSV(lastTriResult.names, lastTriResult.results);
+    });
+ 
+    }).catch(function (err) {
+      console.error('WASM load error:', err);
+      setStatus(document.getElementById('dist-status'), 'Failed: ' + err.message, true);
+      setStatus(document.getElementById('tri-status'), 'Failed: ' + err.message, true);
+    });
+  </script>
+</body>
+
+</html>
